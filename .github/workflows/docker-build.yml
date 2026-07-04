@@ -1,0 +1,39 @@
+name: Docker Build
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  docker-build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Order Service
+        run: |
+          docker build \
+            -t order-service \
+            ./order-service
+
+      - name: Build Inventory Service
+        run: |
+          docker build \
+            -t inventory-service \
+            ./inventory-service
+
+      - name: Build Notification Service
+        run: |
+          docker build \
+            -t notification-service \
+            ./notification-service
