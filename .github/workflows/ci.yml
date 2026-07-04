@@ -1,0 +1,40 @@
+name: Event Driven CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Order Service
+        run: |
+          cd order-service
+          npm install
+
+      - name: Install Inventory Service
+        run: |
+          cd inventory-service
+          npm install
+
+      - name: Install Notification Service
+        run: |
+          cd notification-service
+          npm install
