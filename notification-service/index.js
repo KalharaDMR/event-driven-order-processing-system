@@ -2,39 +2,76 @@ const amqp = require('amqplib');
 
 async function start() {
 
-    const connection =
-        await amqp.connect('amqp://localhost');
+    while (true) {
 
-    const channel =
-        await connection.createChannel();
+        try {
 
-    await channel.assertExchange(
-        'order_events',
-        'fanout',
-        { durable: false }
-    );
+            console.log(
+                'Connecting to RabbitMQ...'
+            );
 
-    const q =
-        await channel.assertQueue('', {
-            exclusive: true
-        });
+            const connection =
+                await amqp.connect(
+                    'amqp://rabbitmq'
+                );
 
-    channel.bindQueue(
-        q.queue,
-        'order_events',
-        ''
-    );
+            const channel =
+                await connection.createChannel();
 
-    channel.consume(q.queue, msg => {
+            await channel.assertExchange(
+                'order_events',
+                'fanout',
+                { durable: false }
+            );
 
-        const data =
-            JSON.parse(msg.content);
+            const q =
+                await channel.assertQueue(
+                    '',
+                    {
+                        exclusive: true
+                    }
+                );
 
-        console.log(
-            `Email sent to ${data.customer}`
-        );
+            channel.bindQueue(
+                q.queue,
+                'order_events',
+                ''
+            );
 
-    });
+            console.log(
+                'Notification service connected'
+            );
+
+            channel.consume(
+                q.queue,
+                msg => {
+
+                    const data =
+                        JSON.parse(
+                            msg.content
+                        );
+
+                    console.log(
+                        `Email sent to ${data.customer}`
+                    );
+
+                }
+            );
+
+            break;
+
+        } catch (error) {
+
+            console.log(
+                'RabbitMQ not ready. Retrying in 5 seconds...'
+            );
+
+            await new Promise(
+                resolve =>
+                    setTimeout(resolve, 5000)
+            );
+        }
+    }
 }
 
 start();

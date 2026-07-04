@@ -2,40 +2,75 @@ const amqp = require('amqplib');
 
 async function start() {
 
-    const connection =
-        await amqp.connect('amqp://localhost');
+    while (true) {
 
-    const channel =
-        await connection.createChannel();
+        try {
 
-    await channel.assertExchange(
-        'order_events',
-        'fanout',
-        { durable: false }
-    );
+            console.log(
+                'Connecting to RabbitMQ...'
+            );
 
-    const q =
-        await channel.assertQueue('', {
-            exclusive: true
-        });
+            const connection =
+                await amqp.connect(
+                    'amqp://rabbitmq'
+                );
 
-    channel.bindQueue(
-        q.queue,
-        'order_events',
-        ''
-    );
+            const channel =
+                await connection.createChannel();
 
-    channel.consume(q.queue, msg => {
+            await channel.assertExchange(
+                'order_events',
+                'fanout',
+                { durable: false }
+            );
 
-        const data =
-            JSON.parse(msg.content);
+            const q =
+                await channel.assertQueue(
+                    '',
+                    {
+                        exclusive: true
+                    }
+                );
 
-        console.log(
-            'Inventory reserved:',
-            data.product
-        );
+            channel.bindQueue(
+                q.queue,
+                'order_events',
+                ''
+            );
 
-    });
+            console.log(
+                'Inventory connected'
+            );
+
+            channel.consume(
+                q.queue,
+                msg => {
+
+                    const data =
+                        JSON.parse(
+                            msg.content
+                        );
+
+                    console.log(
+                        'Inventory reserved:',
+                        data.product
+                    );
+                }
+            );
+
+            break;
+
+        } catch (err) {
+
+            console.log(
+                'RabbitMQ not ready, retrying...'
+            );
+
+            await new Promise(
+                r => setTimeout(r, 5000)
+            );
+        }
+    }
 }
 
 start();

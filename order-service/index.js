@@ -7,16 +7,42 @@ app.use(express.json());
 let channel;
 
 async function connect() {
-    const connection =
-        await amqp.connect('amqp://localhost');
 
-    channel = await connection.createChannel();
+    while (true) {
+        try {
 
-    await channel.assertExchange(
-        'order_events',
-        'fanout',
-        { durable: false }
-    );
+            console.log('Connecting to RabbitMQ...');
+
+            const connection =
+                await amqp.connect('amqp://rabbitmq');
+
+            channel =
+                await connection.createChannel();
+
+            await channel.assertExchange(
+                'order_events',
+                'fanout',
+                { durable: false }
+            );
+
+            console.log(
+                'Connected to RabbitMQ'
+            );
+
+            break;
+
+        } catch (error) {
+
+            console.log(
+                'RabbitMQ not ready. Retrying in 5 seconds...'
+            );
+
+            await new Promise(
+                resolve =>
+                    setTimeout(resolve, 5000)
+            );
+        }
+    }
 }
 
 connect();
