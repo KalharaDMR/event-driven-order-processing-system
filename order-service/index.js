@@ -1,5 +1,5 @@
-const express = require('express');
-const amqp = require('amqplib');
+const express = require("express");
+const amqp = require("amqplib");
 
 const app = express();
 app.use(express.json());
@@ -7,66 +7,46 @@ app.use(express.json());
 let channel;
 
 async function connect() {
+  while (true) {
+    try {
+      console.log("Connecting to RabbitMQ...");
 
-    while (true) {
-        try {
+      const connection = await amqp.connect("amqp://rabbitmq-service");
 
-            console.log('Connecting to RabbitMQ...');
+      channel = await connection.createChannel();
 
-            const connection =
-                await amqp.connect('amqp://rabbitmq');
+      await channel.assertExchange("order_events", "fanout", {
+        durable: false,
+      });
 
-            channel =
-                await connection.createChannel();
+      console.log("Connected to RabbitMQ");
 
-            await channel.assertExchange(
-                'order_events',
-                'fanout',
-                { durable: false }
-            );
+      break;
+    } catch (error) {
+      console.log("RabbitMQ not ready. Retrying in 5 seconds...");
 
-            console.log(
-                'Connected to RabbitMQ'
-            );
-
-            break;
-
-        } catch (error) {
-
-            console.log(
-                'RabbitMQ not ready. Retrying in 5 seconds...'
-            );
-
-            await new Promise(
-                resolve =>
-                    setTimeout(resolve, 5000)
-            );
-        }
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  }
 }
 
 connect();
 
-app.post('/orders', (req, res) => {
+app.post("/orders", (req, res) => {
+  const event = {
+    event: "ORDER_CREATED",
+    customer: req.body.customer,
+    product: req.body.product,
+    timestamp: new Date(),
+  };
 
-    const event = {
-        event: 'ORDER_CREATED',
-        customer: req.body.customer,
-        product: req.body.product,
-        timestamp: new Date()
-    };
+  channel.publish("order_events", "", Buffer.from(JSON.stringify(event)));
 
-    channel.publish(
-        'order_events',
-        '',
-        Buffer.from(JSON.stringify(event))
-    );
+  console.log("Order published");
 
-    console.log('Order published');
-
-    res.json({
-        message: 'Order created'
-    });
+  res.json({
+    message: "Order created",
+  });
 });
 
 app.listen(3000);
