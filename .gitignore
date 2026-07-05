@@ -4,6 +4,8 @@ node_modules/
 # environment variables
 .env
 
+commands.txt
+
 # logs
 *.log
 npm-debug.log*
