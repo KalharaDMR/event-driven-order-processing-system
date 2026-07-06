@@ -1,76 +1,39 @@
-const amqp = require('amqplib');
+const amqp = require("amqplib");
 
 async function start() {
+  while (true) {
+    try {
+      console.log("Connecting to RabbitMQ...");
 
-    while (true) {
+      const connection = await amqp.connect('amqp://rabbitmq-service');
 
-        try {
+      const channel = await connection.createChannel();
 
-            console.log(
-                'Connecting to RabbitMQ...'
-            );
+      await channel.assertExchange("order_events", "fanout", {
+        durable: false,
+      });
 
-            const connection =
-                await amqp.connect(
-                    'amqp://rabbitmq'
-                );
+      const q = await channel.assertQueue("", {
+        exclusive: true,
+      });
 
-            const channel =
-                await connection.createChannel();
+      channel.bindQueue(q.queue, "order_events", "");
 
-            await channel.assertExchange(
-                'order_events',
-                'fanout',
-                { durable: false }
-            );
+      console.log("Inventory connected");
 
-            const q =
-                await channel.assertQueue(
-                    '',
-                    {
-                        exclusive: true
-                    }
-                );
+      channel.consume(q.queue, (msg) => {
+        const data = JSON.parse(msg.content);
 
-            channel.bindQueue(
-                q.queue,
-                'order_events',
-                ''
-            );
+        console.log("Inventory reserved:", data.product);
+      });
 
-            console.log(
-                'Inventory connected'
-            );
+      break;
+    } catch (err) {
+      console.log("RabbitMQ not ready, retrying...");
 
-            channel.consume(
-                q.queue,
-                msg => {
-
-                    const data =
-                        JSON.parse(
-                            msg.content
-                        );
-
-                    console.log(
-                        'Inventory reserved:',
-                        data.product
-                    );
-                }
-            );
-
-            break;
-
-        } catch (err) {
-
-            console.log(
-                'RabbitMQ not ready, retrying...'
-            );
-
-            await new Promise(
-                r => setTimeout(r, 5000)
-            );
-        }
+      await new Promise((r) => setTimeout(r, 5000));
     }
+  }
 }
 
 start();
