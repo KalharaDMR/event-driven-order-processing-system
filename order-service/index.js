@@ -49,4 +49,6 @@ app.post("/orders", (req, res) => {
   });
 });
 
-app.listen(3000);
+app.listen(3000, '0.0.0.0', () => {
+    console.log('Order service listening on port 3000');
+});
